@@ -1,0 +1,32 @@
+{
+  "name": "redux-plug",
+  "version": "0.0.1",
+  "description": "A simple modularization system for redux",
+  "main": "dist/redux-plug.min.js",
+  "module": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "cross-env NODE_ENV=production brunch build --production && brunch build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/niahoo/redux-plug.git"
+  },
+  "keywords": [
+    "redux",
+    "modules",
+    "reducer"
+  ],
+  "author": "niahoo",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/niahoo/redux-plug/issues"
+  },
+  "homepage": "https://github.com/niahoo/redux-plug#readme",
+  "devDependencies": {
+    "babel-brunch": "^6.1.1",
+    "babel-preset-env": "^1.6.1",
+    "brunch": "^2.10.12",
+    "uglify-js-brunch": "^2.10.0"
+  }
+}
