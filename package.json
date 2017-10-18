@@ -27,6 +27,8 @@
     "babel-brunch": "^6.1.1",
     "babel-preset-env": "^1.6.1",
     "brunch": "^2.10.12",
+    "cross-env": "^5.1.0",
     "uglify-js-brunch": "^2.10.0"
-  }
+  },
+  "dependencies": {}
 }
