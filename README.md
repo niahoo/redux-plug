@@ -1,5 +1,7 @@
 # Redux Plug
 
+## This library is unstable at the moment, do not use :)
+
 This library is a simple tool to group you redux code by domain.
 
 You can group the actions and reducers for a same domain in a same file (or
