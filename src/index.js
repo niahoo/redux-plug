@@ -1,6 +1,7 @@
 const __action_creators__ = Symbol('__action_creators__')
 const __is_plug__ = Symbol('__is_plug__')
 const __reducers__ = Symbol('__reducers__')
+const __is_payload_action__ = Symbol('__is_payload_action__')
 
 // Create plug
 // - 1 We will create a new api of action creators with different
@@ -82,7 +83,7 @@ function createPlug(spec, opts) {
             reducerFunctions = [].concat(reducerFunctions)
             actionTypes.forEach(actionType => {
                 reducerFunctions.forEach(reducerFunction => {
-                    reducers.add(actionType, reducerFunction)
+                    reducers.add(actionType, wrapPayloadReducer(reducerFunction))
                 })
             })
         })
@@ -91,7 +92,9 @@ function createPlug(spec, opts) {
     return plug
 }
 
-function applyClosureReducer(state, { reducer }) {
+function applyClosureReducer(state, {
+    reducer
+}) {
     return reducer(state)
 }
 
@@ -112,7 +115,8 @@ function buildPayloadActionCreator(actionType, userCreatorFn, self) {
         }
         return {
             type: actionType,
-            payload
+            payload,
+            [__is_payload_action__]: true
         }
     }
     if (process.env.NODE_ENV === 'development') {
@@ -204,8 +208,8 @@ export const createPlugApp = function() {
         writable: false
     })
 
-    Object.defineProperty(pluggable, 'getPlugApi', {
-        value: function attachPlug(scope) {
+    Object.defineProperty(pluggable, 'bind', {
+        value: function bind(scope) {
             const plug = this[scope]
             if (!plug || !plug[__is_plug__]) {
                 throw new Error(`Plug ${scope} does not exist.`)
@@ -233,6 +237,16 @@ export const createPlugApp = function() {
         writable: false
     })
     return pluggable
+}
+
+function wrapPayloadReducer(reducer) {
+    return function(state, action) {
+        if (action[__is_payload_action__]) {
+            return reducer(state, action.payload, action)
+        } else {
+            return reducer(state, action)
+        }
+    }
 }
 
 function bindPlugActionCreators(actionCreator, dispatch, plug) {

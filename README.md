@@ -1,16 +1,9 @@
 # Redux Plug
 
-## This library is unstable at the moment, do not use :)
-
 This library is a simple tool to group you redux code by domain.
 
 You can group the actions and reducers for a same domain in a same file (or
 folder, or whatever you like).
-
-Then, you create a single reducer in which you can plug your modules.
-
-As the reducer is a regular reducer, you do not have to keep it as the only
-reducer. You can use it with combineReducers or any other library.
 
 
 ## Install
@@ -20,88 +13,96 @@ reducer. You can use it with combineReducers or any other library.
 
 ## How to use
 
-First, you create your pluggable modules:
+First, you create a "plug" then you attach it to your store with a scope : 
+
+A plug can export creators, actions, mutations and reducers.
+- Creators remain unchanged.
+- Actions must return a payload
+- Reducers whose name match an action name will receive the payload :
+  `reducer(state, payload, action)` instead of `reducer(state, action)`. So you 
+  can still listen for any action of the application. Reducers receive the full
+  store state. Future feature will allow to scope the state too.
+- Mutations are action creators that return a reducer, i.e. a function that must
+  accept the current state and return a new state. *Despite the name, redux
+  still requires you to respect immutability of the state and return a new
+  object*.
 
 ```javascript
-//: src/plugs/ui.js
+//: src/plugs/test.js
+const setStateValue = (state, number) => ({ ...state, number })
 
-import {
-  SOME_ACTION
-} from '../constants'
-
-// Actions are defined along with the reducers, but you don't HAVE to.
-
-export const doSomenthingAction = someInput => ({
-  type: SOME_ACTION, someInput
-})
-
-// The only required part is a function that will accept a function to register
-// your reducers with an action type.
-// The registering function is called "reduce" here, because it is like calling
-// "reduce this action with this reducer".
-
-export const plug = reduce => {
-
-  // reduce this action with this reducer function.
-  reduce(SOME_ACTION, (state, { cssSelector }) => {
-    return state.setIn(['ui', 'currentPanel'], cssSelector)
-  })
-
-  // reducer function is defined elsewhere in the module (or even imported).
-  reduce(SOME_ACTION, reducingFunction)
-
-  // react to multiple actions with the same reducer.
-  reduce([SOME_ACTION, SOME_OTHER_ACTION], reducingFunction)
-
-  // react to an action with multiple reducers. They will be called in order.
-  reduce(SOME_ACTION, fun1)
-  reduce(SOME_ACTION, fun2)
+export default {
+    mutations: {
+        setNumber(n) {
+            return oldState => setStateValue(oldState, n)
+        }
+    },
+    actions: {
+        increment() {},
+        multiply(x) { return x },
+        intDivide(x) { return x },
+    },
+    reducers: {
+        increment: state => setStateValue(state, state.number + 1),
+        multiply: (state, x) => setStateValue(state, state.number * x),
+        intDivide: [
+            (state, x) => setStateValue(state, state.number / x),
+            (state, x) => setStateValue(state, Math.round(state.number)),
+        ],
+    }
 }
 
 ```
 
-Then, you create a reducer and plug your modules in:
+To attach the plug to a store, you must create a plug application, and give its
+enhancer when you create the store. This mechanism allows to keep a standard
+redux store compatible with any other redux libraries and any other middleware.
 
 ```javascript
 //: src/store.js
 
 // Import the library
-import { createReducer } from 'redux-plug'
+import { createPlugApp } from 'redux-plug'
 
 // Import your plugs
-import { plug as plugUI } from './plugs/ui'
-import { plug as plugTodos } from './plugs/todos'
+import plugTest from './plugs/test'
 
-const reducer = createReducer(/* Optional initial state here */)
-  .plug(plugUI)
-  .plug(plugTodos)
+// Create the plug application 
+const app = createPlugApp()
 
-const store = createStore(
-  reducer
-  // , initialState
-  // , applyMiddleware(logger,thunk)
+// Prepare a store enhancer, maybe add some middleware like redux-thunk
+const storeEnhancer = compose(
+    app.enhancer,
+    applyMiddleware(thunk)
 )
-```
 
-As the plug system requires only constants and functions, you can register
-reducers for any action type in any module.
+// Redux-plug allows you to give no defaut reducer, but you can of course give
+// any reducer to the store. The reducer of redux-plug will be added
+// automatically.
+
+const reducer = myReducer // or null if you want
+const store = createStore(myReducer, initialState, storeEnhancer)
+
+// You can now plug your modules in the app
+app.plug('test', testPlug)
+
+// The application gives action creators
+store.dispatch(app.test.setNumber(1))
+store.dispatch(app.test.increment())
+store.dispatch(app.test.multiply(100))
+store.dispatch(app.test.intDivide(3))
+
+// You can get bound creators this way
+const testApi = app.bind('test')
+
+testApi.increment() // equivalent to store.dispatch(app.test.increment())
+```
 
 ## TODO
 
-### Scoping system
-
-- [ ] Pass an options object to `createReducer` (as 2nd arg) to give a `scoping`
-      function. The default function uses define property, but a custom function
-      can be used to use an immutable library :
-
-      {
-        scoping: (state, key, changes) => state.update(key, changes)
-      }
-
-
+### State Scoping system
 
 - [ ] Pass a scope name to the `plug` function to enable the scoping behaviour
-      for this plug:
+      for this plug, so the plug's reducers only work with a part of the state.
 
-      const reducer = createReducer(initialState, {scoping: myScopingFun})
-        .plug(plugUI, 'ui')
+      app.plug('myPlug', myPlug, { stateScope: 'subStateKey' })
